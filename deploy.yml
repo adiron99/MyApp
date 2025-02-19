@@ -1,0 +1,51 @@
+---
+- name: Deploy App into Testing
+  hosts: testing
+  become: true
+
+  tasks:
+    - name: Install apache
+      become: true
+      apt:
+        name:
+          - apache2
+          - git
+        state: latest
+        update_cache: yes
+      register: apache_installed
+
+    - name: Check if the dir exist or not
+      stat:
+        path: /home/ansible/MyApp
+      register: dir_check
+
+    - name: Remove dir if exist
+      become: true
+      file:
+        path: /home/ansible/MyApp
+        state: absent
+        mode: '0755'
+      when: dir_check.stat.exists
+
+    - name: Wait
+      ansible.builtin.wait_for:
+        timeout: 20
+
+    - name: Clone from git
+      become: true
+      ansible.builtin.git:
+        repo: 'https://github.com/adiron99/MyApp.git'
+        dest: /home/ansible/MyApp
+        update: yes
+        version: main
+      ignore_errors: true
+
+    - name: wait
+      ansible.builtin.wait_for:
+        timeout: 30
+
+    - name: copy code to server
+      become: true
+      copy:
+        src: /home/ansible/MyApp/index.html
+        dest: /var/www/html/
